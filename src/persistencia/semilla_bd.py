@@ -140,23 +140,23 @@ def cargar_semilla():
 
     empleados_creados = 0
     for datos in EMPLEADOS:
-        if datos["username"] in usernames_existentes:
-            empleados_por_usuario[datos["username"]] = next(
+        if datos["usuario"] in usernames_existentes:
+            empleados_por_usuario[datos["usuario"]] = next(
                 e for e in empleados_existentes
-                if e.username == datos["username"]
+                if e.username == datos["usuario"]
             )
             continue
 
         if datos["correo"].casefold() in correos_existentes:
             print(
                 "AVISO: se omitió el empleado "
-                f"{datos['username']} porque el correo ya existe."
+                f"{datos['usuario']} porque el correo ya existe."
             )
             continue
 
         empleado = Empleado(
-            username=datos["username"],
-            password=datos["password"],
+            username=datos["usuario"],
+            password=datos["contraseña"],
             nombre=datos["nombre"],
             correo=datos["correo"],
             direccion=datos["direccion"],

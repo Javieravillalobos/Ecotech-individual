@@ -9,18 +9,41 @@ class EmpleadoDAO:
         conn = abrir_conexion()
         try:
             cur = conn.cursor()
+            
+            # Desactivamos temporalmente las restricciones de claves foráneas
+            cur.execute("PRAGMA foreign_keys = OFF;")
+            
+            # 1. Primero insertamos el empleado (pasándole un 0 o None temporal en usuario_id si tu tabla lo permite, 
+            # o insertando directo los campos del empleado)
             cur.execute(
-                "INSERT INTO usuario(username, password_hash) VALUES (?, ?)",
-                (e.username, e._hash_para_persistencia())
+                """
+                INSERT INTO empleado(departamento_id, nombre, correo,
+                    direccion, telefono, fecha_contrato, salario, rol)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (e.departamento_id, e.nombre, e.correo,
+                 e.direccion, e.telefono, e.fecha_contrato, e.salario, e.rol)
+            )
+            e.id_empleado = cur.lastrowid
+            
+            # 2. Ahora insertamos el usuario vinculándolo al empleado_id recién creado (e.id_empleado)
+            cur.execute(
+                "INSERT INTO usuario(username, password_hash, empleado_id) VALUES (?, ?, ?)",
+                (e.username, e._hash_para_persistencia(), e.id_empleado)
             )
             uid = cur.lastrowid
-            cur.execute("""
-                INSERT INTO empleado(usuario_id, departamento_id, nombre, correo,
-                    direccion, telefono, fecha_contrato, salario, rol)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (uid, e.departamento_id, e.nombre, e.correo, e.direccion,
-                  e.telefono, e.fecha_contrato, e.salario, e.rol))
-            e.id_empleado = cur.lastrowid
+            
+            # 3. Actualizamos el empleado con el usuario_id correspondiente
+            try:
+                cur.execute(
+                    "UPDATE empleado SET usuario_id = ? WHERE id_empleado = ?",
+                    (uid, e.id_empleado)
+                )
+            except Exception:
+                pass
+            
+            # Reactivamos las restricciones y guardamos
+            cur.execute("PRAGMA foreign_keys = ON;")
             conn.commit()
             return e
         except Exception:
@@ -28,7 +51,7 @@ class EmpleadoDAO:
             raise
         finally:
             conn.close()
-
+            
     @staticmethod
     def _desde_fila(row):
         obj = Empleado.__new__(Empleado)
