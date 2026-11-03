@@ -99,19 +99,13 @@ REGISTROS = [
 ]
 
 
-def _fila_a_dict(fila):
-    return dict(fila)
-
-
 def cargar_semilla():
     """Inserta únicamente registros que aún no existen."""
     conn = abrir_conexion()
     try:
-        usuarios_existentes = {
-            fila["username"] for fila in conn.execute(
-                "SELECT username FROM usuario"
-            ).fetchall()
-        }
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT username FROM usuario")
+            usuarios_existentes = {fila["username"] for fila in cursor.fetchall()}
     finally:
         conn.close()
 
@@ -189,12 +183,12 @@ def cargar_semilla():
     # que ejecutar la semilla otra vez no choque con la clave primaria.
     conn = abrir_conexion()
     try:
-        relaciones = {
-            (int(f["proyecto_id"]), int(f["empleado_id"]))
-            for f in conn.execute(
-                "SELECT proyecto_id, empleado_id FROM proyecto_empleado"
-            ).fetchall()
-        }
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT proyecto_id, empleado_id FROM proyecto_empleado")
+            relaciones = {
+                (int(f["proyecto_id"]), int(f["empleado_id"]))
+                for f in cursor.fetchall()
+            }
     finally:
         conn.close()
 
@@ -256,13 +250,14 @@ def cargar_semilla():
     conn = abrir_conexion()
     try:
         conteos = {}
-        for tabla in (
-            "departamento", "usuario", "empleado",
-            "proyecto", "proyecto_empleado", "registro_tiempo"
-        ):
-            conteos[tabla] = conn.execute(
-                f"SELECT COUNT(*) AS total FROM {tabla}"
-            ).fetchone()["total"]
+        with conn.cursor() as cursor:
+            for tabla in (
+                "departamento", "usuario", "empleado",
+                "proyecto", "proyecto_empleado", "registro_tiempo"
+            ):
+                cursor.execute(f"SELECT COUNT(*) AS total FROM {tabla}")
+                resultado = cursor.fetchone()
+                conteos[tabla] = resultado["total"]
     finally:
         conn.close()
 

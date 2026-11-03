@@ -1,5 +1,5 @@
 """Creación de tablas para SQLite y MySQL/MariaDB."""
-from .conexion import abrir_conexion, motor_actual
+from .conexion import abrir_conexion, obtener_motor
 
 
 ESQUEMA_SQLITE = """
@@ -167,19 +167,24 @@ def crear_tablas():
     conn = abrir_conexion()
 
     try:
-        motor = motor_actual()
+        motor = obtener_motor()
 
         if motor == "sqlite":
-            esquema = ESQUEMA_SQLITE
+            conn.executescript(ESQUEMA_SQLITE)
+            conn.commit()
         elif motor in ("mysql", "mariadb"):
-            esquema = ESQUEMA_MYSQL
+            with conn.cursor() as cursor:
+                # Dividir el script por ';' para ejecutar sentencia por sentencia en PyMySQL
+                sentencias = ESQUEMA_MYSQL.split(";")
+                for sentencia in sentencias:
+                    sentencia_limpia = sentencia.strip()
+                    if sentencia_limpia:
+                        cursor.execute(sentencia_limpia)
+            conn.commit()
         else:
             raise ValueError(
                 "DB_ENGINE debe ser 'sqlite', 'mysql' o 'mariadb'."
             )
-
-        conn.executescript(esquema)
-        conn.commit()
 
     except Exception:
         conn.rollback()
