@@ -1,5 +1,5 @@
 from datetime import date
-from .conexion import abrir_conexion
+from .conexion import abrir_conexion, obtener_motor, marcador_sql
 from dominio.empleado import Empleado
 
 
@@ -7,45 +7,52 @@ class EmpleadoDAO:
     @staticmethod
     def insertar(e):
         conn = abrir_conexion()
+        motor = obtener_motor()
+        ph = marcador_sql()
         try:
-            cur = conn.cursor()
-            
-            # Desactivamos temporalmente las restricciones de claves foráneas
-            cur.execute("PRAGMA foreign_keys = OFF;")
-            
-            # 1. Primero insertamos el empleado (pasándole un 0 o None temporal en usuario_id si tu tabla lo permite, 
-            # o insertando directo los campos del empleado)
-            cur.execute(
-                """
-                INSERT INTO empleado(departamento_id, nombre, correo,
-                    direccion, telefono, fecha_contrato, salario, rol)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (e.departamento_id, e.nombre, e.correo,
-                 e.direccion, e.telefono, e.fecha_contrato, e.salario, e.rol)
-            )
-            e.id_empleado = cur.lastrowid
-            
-            # 2. Ahora insertamos el usuario vinculándolo al empleado_id recién creado (e.id_empleado)
-            cur.execute(
-                "INSERT INTO usuario(username, password_hash, empleado_id) VALUES (?, ?, ?)",
-                (e.username, e._hash_para_persistencia(), e.id_empleado)
-            )
-            uid = cur.lastrowid
-            
-            # 3. Actualizamos el empleado con el usuario_id correspondiente
-            try:
+            with conn.cursor() as cur:
+                # Desactivamos temporalmente las restricciones de claves foráneas según el motor
+                if motor == "sqlite":
+                    cur.execute("PRAGMA foreign_keys = OFF;")
+                else:
+                    cur.execute("SET foreign_key_checks = 0;")
+                
+                # 1. Insertamos el empleado
                 cur.execute(
-                    "UPDATE empleado SET usuario_id = ? WHERE id_empleado = ?",
-                    (uid, e.id_empleado)
+                    f"""
+                    INSERT INTO empleado(departamento_id, nombre, correo,
+                        direccion, telefono, fecha_contrato, salario, rol)
+                    VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph})
+                    """,
+                    (e.departamento_id, e.nombre, e.correo,
+                     e.direccion, e.telefono, e.fecha_contrato, e.salario, e.rol)
                 )
-            except Exception:
-                pass
-            
-            # Reactivamos las restricciones y guardamos
-            cur.execute("PRAGMA foreign_keys = ON;")
-            conn.commit()
-            return e
+                e.id_empleado = cur.lastrowid
+                
+                # 2. Insertamos el usuario vinculándolo al empleado_id
+                cur.execute(
+                    f"INSERT INTO usuario(username, password_hash, empleado_id) VALUES ({ph}, {ph}, {ph})",
+                    (e.username, e._hash_para_persistencia(), e.id_empleado)
+                )
+                uid = cur.lastrowid
+                
+                # 3. Actualizamos el empleado con el usuario_id correspondiente
+                try:
+                    cur.execute(
+                        f"UPDATE empleado SET usuario_id = {ph} WHERE id_empleado = {ph}",
+                        (uid, e.id_empleado)
+                    )
+                except Exception:
+                    pass
+                
+                # Reactivamos las restricciones según el motor
+                if motor == "sqlite":
+                    cur.execute("PRAGMA foreign_keys = ON;")
+                else:
+                    cur.execute("SET foreign_key_checks = 1;")
+                    
+                conn.commit()
+                return e
         except Exception:
             conn.rollback()
             raise
@@ -71,13 +78,16 @@ class EmpleadoDAO:
     @staticmethod
     def buscar_por_id(id_empleado):
         conn = abrir_conexion()
+        ph = marcador_sql()
         try:
-            row = conn.execute("""
-                SELECT e.*, u.username, u.password_hash
-                FROM empleado e JOIN usuario u ON u.id = e.usuario_id
-                WHERE e.id_empleado = ?
-            """, (id_empleado,)).fetchone()
-            return EmpleadoDAO._desde_fila(row) if row else None
+            with conn.cursor() as cur:
+                cur.execute(f"""
+                    SELECT e.*, u.username, u.password_hash
+                    FROM empleado e JOIN usuario u ON u.id = e.usuario_id
+                    WHERE e.id_empleado = {ph}
+                """, (id_empleado,))
+                row = cur.fetchone()
+                return EmpleadoDAO._desde_fila(row) if row else None
         finally:
             conn.close()
 
@@ -85,12 +95,14 @@ class EmpleadoDAO:
     def listar():
         conn = abrir_conexion()
         try:
-            rows = conn.execute("""
-                SELECT e.*, u.username, u.password_hash
-                FROM empleado e JOIN usuario u ON u.id = e.usuario_id
-                ORDER BY e.id_empleado
-            """).fetchall()
-            return [EmpleadoDAO._desde_fila(row) for row in rows]
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT e.*, u.username, u.password_hash
+                    FROM empleado e JOIN usuario u ON u.id = e.usuario_id
+                    ORDER BY e.id_empleado
+                """)
+                rows = cur.fetchall()
+                return [EmpleadoDAO._desde_fila(row) for row in rows]
         finally:
             conn.close()
 
@@ -98,15 +110,17 @@ class EmpleadoDAO:
     def actualizar(e):
         e.validar()
         conn = abrir_conexion()
+        ph = marcador_sql()
         try:
-            cur = conn.execute("""
-                UPDATE empleado SET departamento_id=?, nombre=?, correo=?,
-                    direccion=?, telefono=?, fecha_contrato=?, salario=?, rol=?
-                WHERE id_empleado=?
-            """, (e.departamento_id, e.nombre, e.correo, e.direccion,
-                  e.telefono, e.fecha_contrato, e.salario, e.rol, e.id_empleado))
-            conn.commit()
-            return cur.rowcount > 0
+            with conn.cursor() as cur:
+                cur.execute(f"""
+                    UPDATE empleado SET departamento_id={ph}, nombre={ph}, correo={ph},
+                        direccion={ph}, telefono={ph}, fecha_contrato={ph}, salario={ph}, rol={ph}
+                    WHERE id_empleado={ph}
+                """, (e.departamento_id, e.nombre, e.correo, e.direccion,
+                      e.telefono, e.fecha_contrato, e.salario, e.rol, e.id_empleado))
+                conn.commit()
+                return cur.rowcount > 0
         except Exception:
             conn.rollback()
             raise
@@ -116,17 +130,20 @@ class EmpleadoDAO:
     @staticmethod
     def eliminar(id_empleado):
         conn = abrir_conexion()
+        ph = marcador_sql()
         try:
-            row = conn.execute(
-                "SELECT usuario_id FROM empleado WHERE id_empleado=?",
-                (id_empleado,)
-            ).fetchone()
-            if row is None:
-                return False
-            conn.execute("DELETE FROM empleado WHERE id_empleado=?", (id_empleado,))
-            conn.execute("DELETE FROM usuario WHERE id=?", (row["usuario_id"],))
-            conn.commit()
-            return True
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"SELECT usuario_id FROM empleado WHERE id_empleado={ph}",
+                    (id_empleado,)
+                )
+                row = cur.fetchone()
+                if row is None:
+                    return False
+                cur.execute(f"DELETE FROM empleado WHERE id_empleado={ph}", (id_empleado,))
+                cur.execute(f"DELETE FROM usuario WHERE id={ph}", (row["usuario_id"],))
+                conn.commit()
+                return True
         except Exception:
             conn.rollback()
             raise

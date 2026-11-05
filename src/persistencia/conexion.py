@@ -15,7 +15,10 @@ def motor_actual():
 def abrir_conexion():
     motor = obtener_motor()
     if motor == "sqlite":
-        return sqlite3.connect(os.getenv("DB_NAME", "ecotech.db"))
+        conn = sqlite3.connect(os.getenv("DB_NAME", "ecotech.db"))
+        # Esto hace que SQLite devuelva las filas como diccionarios (igual que PyMySQL)
+        conn.row_factory = sqlite3.Row
+        return conn
     if motor == "mysql":
         return pymysql.connect(
             host=os.getenv("DB_HOST", "localhost"),
@@ -24,7 +27,7 @@ def abrir_conexion():
             password=os.getenv("DB_PASSWORD"),
             database=os.getenv("DB_NAME"),
             charset="utf8mb4",
-            cursorclass=pymysql.cursors.DictCursor,  # <-- Necesario para que funcione igual que SQLite
+            cursorclass=pymysql.cursors.DictCursor,
         )
 
     raise ValueError(f"Motor no soportado: {motor}")
