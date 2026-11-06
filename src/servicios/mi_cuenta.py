@@ -8,7 +8,7 @@ from servicios.permisos import exigir_sesion
 def ver_mi_ficha(sesion: dict) -> Empleado:
     """Devuelve la entidad Empleado del usuario en sesión."""
     exigir_sesion(sesion)
-    empleado = EmpleadoDAO.buscar_por_id(sesion["empleado_id"])
+    empleado = EmpleadoDAO.obtener_por_id(sesion["empleado_id"])
     if empleado is None:
         raise ValueError("Empleado no encontrado.")
     return empleado
@@ -31,7 +31,7 @@ def actualizar_mis_datos(sesion: dict, nombre: str, correo: str) -> bool:
     nombre = Empleado.validar_nombre(nombre)
     correo = Empleado.validar_correo(correo)
 
-    empleado = EmpleadoDAO.buscar_por_id(sesion["empleado_id"])
+    empleado = EmpleadoDAO.obtener_por_id(sesion["empleado_id"])
     if empleado is None:
         raise ValueError("Empleado no encontrado.")
 
@@ -49,7 +49,7 @@ def registrar_mi_tiempo(sesion: dict, proyecto_id: int, fecha: str, horas: float
     empleado_id = sesion.get("empleado_id")
     if not isinstance(empleado_id, int) or empleado_id <= 0:
         raise ValueError("La sesión no tiene un empleado asociado.")
-    if EmpleadoDAO.buscar_por_id(empleado_id) is None:
+    if EmpleadoDAO.obtener_por_id(empleado_id) is None:
         raise ValueError("El empleado no existe.")
     if ProyectoDAO.obtener_por_id(proyecto_id) is None:
         raise ValueError("El proyecto no existe.")

@@ -1,5 +1,8 @@
-"""DAO para la entidad RegistroTiempo."""
-from .conexion import abrir_conexion
+"""
+DAO para la entidad RegistroTiempo."""
+from contextlib import closing
+
+from .conexion import abrir_conexion, marcador_sql
 from dominio.registro_tiempo import RegistroTiempo
 
 
@@ -37,7 +40,7 @@ class RegistroTiempoDAO:
                 """
                 INSERT INTO registro_tiempo (empleado_id, proyecto_id, fecha, horas_trabajadas, descripcion_tarea)
                 VALUES (%s, %s, %s, %s, %s)
-                """,
+                """.replace("%s", marcador_sql()),
                 (emp_id, proy_id, fec, hrs, desc),
             )
             conn.commit()
@@ -62,14 +65,14 @@ class RegistroTiempoDAO:
                        horas_trabajadas, descripcion_tarea
                 FROM registro_tiempo
                 WHERE id_registro = %s
-                """,
+                """.replace("%s", marcador_sql()),
                 (id_registro,),
             )
             row = cursor.fetchone()
             if not row:
                 return None
 
-            if isinstance(row, dict):
+            if hasattr(row, "keys"):
                 return RegistroTiempo(
                     id_registro=row["id_registro"],
                     empleado_id=row["empleado_id"],
@@ -89,10 +92,6 @@ class RegistroTiempoDAO:
         finally:
             conn.close()
 
-    @classmethod
-    def buscar_por_id(cls, id_registro: int) -> RegistroTiempo | None:
-        """Alias para compatibilidad con las vistas del menú."""
-        return cls.obtener_por_id(id_registro)
 
     @classmethod
     def obtener_por_empleado(cls, empleado_id: int) -> list[RegistroTiempo]:
@@ -106,13 +105,13 @@ class RegistroTiempoDAO:
                        horas_trabajadas, descripcion_tarea
                 FROM registro_tiempo
                 WHERE empleado_id = %s
-                """,
+                """.replace("%s", marcador_sql()),
                 (empleado_id,),
             )
             rows = cursor.fetchall()
             registros = []
             for row in rows:
-                if isinstance(row, dict):
+                if hasattr(row, "keys"):
                     registros.append(
                         RegistroTiempo(
                             id_registro=row["id_registro"],
@@ -159,7 +158,7 @@ class RegistroTiempoDAO:
             rows = cursor.fetchall()
             registros = []
             for row in rows:
-                if isinstance(row, dict):
+                if hasattr(row, "keys"):
                     registros.append(
                         RegistroTiempo(
                             id_registro=row["id_registro"],
@@ -197,7 +196,7 @@ class RegistroTiempoDAO:
         try:
             cursor = conn.cursor()
             cursor.execute(
-                "DELETE FROM registro_tiempo WHERE id_registro = %s",
+                f"DELETE FROM registro_tiempo WHERE id_registro = {marcador_sql()}",
                 (id_registro,),
             )
             conn.commit()
@@ -209,3 +208,19 @@ class RegistroTiempoDAO:
     def borrar(cls, id_registro: int) -> bool:
         """Alias de compatibilidad para la opción de eliminación."""
         return cls.eliminar(id_registro)
+
+    @classmethod
+    def actualizar(cls, id_registro: int, empleado_id: int, proyecto_id: int, fecha: str, horas: float, descripcion: str) -> bool:
+        conn = abrir_conexion()
+        p = marcador_sql()
+        try:
+            with closing(conn.cursor()) as cursor:
+                cursor.execute(f"UPDATE registro_tiempo SET empleado_id={p}, proyecto_id={p}, fecha={p}, horas_trabajadas={p}, descripcion_tarea={p} WHERE id_registro={p}", (empleado_id, proyecto_id, fecha, horas, descripcion, id_registro))
+                cambiado = cursor.rowcount > 0
+            conn.commit()
+            return cambiado
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()

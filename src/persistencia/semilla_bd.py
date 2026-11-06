@@ -1,3 +1,4 @@
+from contextlib import closing
 """Carga datos de demostración de forma idempotente.
 
 Ejecutar desde la carpeta src:
@@ -169,7 +170,7 @@ def cargar_semilla():
     # 4. Asignaciones Proyecto - Empleado
     conn = abrir_conexion()
     try:
-        with conn.cursor() as cursor:
+        with closing(conn.cursor()) as cursor:
             cursor.execute("SELECT proyecto_id, empleado_id FROM proyecto_empleado")
             relaciones = {(int(f["proyecto_id"]), int(f["empleado_id"])) for f in cursor.fetchall()}
     finally:
@@ -222,7 +223,7 @@ def cargar_semilla():
     conn = abrir_conexion()
     try:
         conteos = {}
-        with conn.cursor() as cursor:
+        with closing(conn.cursor()) as cursor:
             for tabla in ("departamento", "empleado", "usuario", "proyecto", "proyecto_empleado", "registro_tiempo"):
                 cursor.execute(f"SELECT COUNT(*) AS total FROM {tabla}")
                 conteos[tabla] = cursor.fetchone()["total"]

@@ -1,3 +1,4 @@
+from contextlib import closing
 """DAO para la entidad Usuario con mapeo seguro de roles y contraseñas."""
 import pymysql
 from .conexion import abrir_conexion, marcador_sql
@@ -27,7 +28,7 @@ class UsuarioDAO:
         pwd_hash = cls._obtener_hash(usuario)
         
         try:
-            with conn.cursor() as cursor:
+            with closing(conn.cursor()) as cursor:
                 sql = f"""
                     INSERT INTO usuario (empleado_id, username, password_hash, rol)
                     VALUES ({p}, {p}, {p}, {p})
@@ -51,7 +52,7 @@ class UsuarioDAO:
         conn = abrir_conexion()
         p = marcador_sql()
         try:
-            with conn.cursor() as cursor:
+            with closing(conn.cursor()) as cursor:
                 sql = f"""
                     SELECT id_usuario AS id, empleado_id, username, password_hash, rol 
                     FROM usuario 
@@ -83,7 +84,7 @@ class UsuarioDAO:
         conn = abrir_conexion()
         p = marcador_sql()
         try:
-            with conn.cursor() as cursor:
+            with closing(conn.cursor()) as cursor:
                 sql = f"""
                     SELECT id_usuario AS id, empleado_id, username, password_hash, rol 
                     FROM usuario 
@@ -113,7 +114,7 @@ class UsuarioDAO:
         """Lista todos los usuarios registrando sus roles normalizados."""
         conn = abrir_conexion()
         try:
-            with conn.cursor() as cursor:
+            with closing(conn.cursor()) as cursor:
                 sql = "SELECT id_usuario AS id, empleado_id, username, rol FROM usuario"
                 cursor.execute(sql)
                 filas = cursor.fetchall()

@@ -25,11 +25,11 @@ def menu_proyectos():
                     print(f"{fila['id_proyecto']}: {fila['nombre']} | {fila['fecha_inicio']} - {fila['fecha_fin']}")
             ejecutar(listar)
         elif op == "3":
-            ejecutar(lambda: print(ProyectoDAO.buscar_por_id(entero("ID: ")) or "No encontrado."))
+            ejecutar(lambda: print(ProyectoDAO.obtener_por_id(entero("ID: ")) or "No encontrado."))
         elif op == "4":
             def actualizar():
                 ident = entero("ID: ")
-                fila = ProyectoDAO.buscar_por_id(ident)
+                fila = ProyectoDAO.obtener_por_id(ident)
                 if not fila:
                     print("No encontrado.")
                     return
@@ -45,9 +45,9 @@ def menu_proyectos():
             def asignar():
                 proyecto_id = entero("ID proyecto: ")
                 empleado_id = entero("ID empleado: ")
-                if not ProyectoDAO.buscar_por_id(proyecto_id):
+                if not ProyectoDAO.obtener_por_id(proyecto_id):
                     raise ValueError("No existe ese proyecto.")
-                if not EmpleadoDAO.buscar_por_id(empleado_id):
+                if not EmpleadoDAO.obtener_por_id(empleado_id):
                     raise ValueError("No existe ese empleado.")
                 ProyectoDAO.asignar_empleado(proyecto_id, empleado_id)
                 print("Empleado asignado al proyecto.")

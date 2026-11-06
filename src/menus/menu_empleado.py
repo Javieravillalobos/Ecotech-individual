@@ -299,7 +299,7 @@ def buscar():
     print("\n-- Buscar empleado --")
 
     ident = pedir_id()
-    empleado = EmpleadoDAO.buscar_por_id(ident)
+    empleado = EmpleadoDAO.obtener_por_id(ident)
 
     if not empleado:
         print("Empleado no encontrado.")
@@ -318,7 +318,7 @@ def actualizar():
     print("\n-- Actualizar empleado --")
 
     ident = pedir_id()
-    empleado = EmpleadoDAO.buscar_por_id(ident)
+    empleado = EmpleadoDAO.obtener_por_id(ident)
 
     if not empleado:
         print("Empleado no encontrado.")
@@ -381,7 +381,7 @@ def eliminar():
     print("\n-- Eliminar empleado --")
 
     ident = pedir_id()
-    empleado = EmpleadoDAO.buscar_por_id(ident)
+    empleado = EmpleadoDAO.obtener_por_id(ident)
 
     if not empleado:
         print("Empleado no encontrado.")

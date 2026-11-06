@@ -1,5 +1,5 @@
 """DAO para la entidad Empleado."""
-from .conexion import abrir_conexion
+from .conexion import abrir_conexion, marcador_sql
 from dominio.empleado import Empleado
 
 
@@ -46,7 +46,7 @@ class EmpleadoDAO:
                 """
                 INSERT INTO empleado (departamento_id, nombre, correo, direccion, telefono, fecha_contrato, salario)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """,
+                """.replace("%s", marcador_sql()),
                 (depto_id, nom, cor, dir_emp, tel, fec, sal),
             )
             conn.commit()
@@ -75,7 +75,7 @@ class EmpleadoDAO:
                 UPDATE empleado
                 SET nombre = %s, correo = %s, direccion = %s, telefono = %s, salario = %s
                 WHERE id_empleado = %s
-                """,
+                """.replace("%s", marcador_sql()),
                 (
                     empleado.nombre,
                     empleado.correo,
@@ -97,20 +97,13 @@ class EmpleadoDAO:
         try:
             cursor = conn.cursor()
             
-            # 1. Desactivar validación de Foreign Keys temporalmente
-            cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
-
-            # 2. Eliminar referencias del empleado en las tablas hijas
-            cursor.execute("DELETE FROM registro_tiempo WHERE empleado_id = %s;", (id_empleado,))
-            cursor.execute("DELETE FROM usuario WHERE empleado_id = %s;", (id_empleado,))
-            
-            # 3. Eliminar la fila principal del empleado
-            cursor.execute("DELETE FROM empleado WHERE id_empleado = %s;", (id_empleado,))
+            p = marcador_sql()
+            cursor.execute(f"DELETE FROM proyecto_empleado WHERE empleado_id = {p}", (id_empleado,))
+            cursor.execute(f"DELETE FROM registro_tiempo WHERE empleado_id = {p}", (id_empleado,))
+            cursor.execute(f"DELETE FROM usuario WHERE empleado_id = {p}", (id_empleado,))
+            cursor.execute(f"DELETE FROM empleado WHERE id_empleado = {p}", (id_empleado,))
             filas_afectadas = cursor.rowcount
 
-            # 4. Reactivar validación de Foreign Keys
-            cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
-            
             conn.commit()
             return filas_afectadas > 0
         except Exception as e:
@@ -136,14 +129,14 @@ class EmpleadoDAO:
                        direccion, telefono, fecha_contrato, salario
                 FROM empleado
                 WHERE id_empleado = %s
-                """,
+                """.replace("%s", marcador_sql()),
                 (id_empleado,),
             )
             row = cursor.fetchone()
             if not row:
                 return None
 
-            if isinstance(row, dict):
+            if hasattr(row, "keys"):
                 return Empleado(
                     id_empleado=row["id_empleado"],
                     departamento_id=row["departamento_id"],
@@ -167,10 +160,6 @@ class EmpleadoDAO:
         finally:
             conn.close()
 
-    @classmethod
-    def buscar_por_id(cls, id_empleado: int) -> Empleado | None:
-        """Alias para mantener compatibilidad con las vistas de menú."""
-        return cls.obtener_por_id(id_empleado)
 
     @classmethod
     def obtener_todos(cls) -> list[Empleado]:
@@ -188,7 +177,7 @@ class EmpleadoDAO:
             rows = cursor.fetchall()
             empleados = []
             for row in rows:
-                if isinstance(row, dict):
+                if hasattr(row, "keys"):
                     empleados.append(
                         Empleado(
                             id_empleado=row["id_empleado"],

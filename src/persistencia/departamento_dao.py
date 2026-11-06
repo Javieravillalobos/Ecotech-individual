@@ -1,3 +1,4 @@
+from contextlib import closing
 """DAO para la entidad Departamento.
 
 Soporta MySQL y SQLite utilizando los marcadores de consulta dinámicos.
@@ -12,7 +13,7 @@ class DepartamentoDAO:
         conn = abrir_conexion()
         p = marcador_sql()
         try:
-            with conn.cursor() as cursor:
+            with closing(conn.cursor()) as cursor:
                 sql = f"INSERT INTO departamento (nombre, gerente_id) VALUES ({p}, {p})"
                 cursor.execute(sql, (nombre.strip(), gerente_id))
                 id_generado = cursor.lastrowid
@@ -29,8 +30,8 @@ class DepartamentoDAO:
         """Retorna todos los departamentos usando alias para compatibilidad."""
         conn = abrir_conexion()
         try:
-            with conn.cursor() as cursor:
-                sql = "SELECT id_departamento AS id_depto, nombre, presupuesto, gerente_id FROM departamento"
+            with closing(conn.cursor()) as cursor:
+                sql = "SELECT id_departamento AS id_depto, nombre, presupuesto, gerente_id, (SELECT COUNT(*) FROM empleado WHERE departamento_id = departamento.id_departamento) AS empleados FROM departamento"
                 cursor.execute(sql)
                 return cursor.fetchall()
         finally:
@@ -42,7 +43,7 @@ class DepartamentoDAO:
         conn = abrir_conexion()
         p = marcador_sql()
         try:
-            with conn.cursor() as cursor:
+            with closing(conn.cursor()) as cursor:
                 sql = f"SELECT id_departamento AS id_depto, nombre, presupuesto, gerente_id FROM departamento WHERE id_departamento = {p}"
                 cursor.execute(sql, (id_depto,))
                 return cursor.fetchone()
@@ -55,7 +56,7 @@ class DepartamentoDAO:
         conn = abrir_conexion()
         p = marcador_sql()
         try:
-            with conn.cursor() as cursor:
+            with closing(conn.cursor()) as cursor:
                 sql = f"UPDATE departamento SET gerente_id = {p} WHERE id_departamento = {p}"
                 cursor.execute(sql, (gerente_id, id_depto))
                 filas_afectadas = cursor.rowcount
@@ -73,7 +74,7 @@ class DepartamentoDAO:
         conn = abrir_conexion()
         p = marcador_sql()
         try:
-            with conn.cursor() as cursor:
+            with closing(conn.cursor()) as cursor:
                 sql = f"UPDATE departamento SET nombre = {p}, presupuesto = {p}, gerente_id = {p} WHERE id_departamento = {p}"
                 cursor.execute(sql, (nombre.strip(), presupuesto, gerente_id, id_depto))
                 filas_afectadas = cursor.rowcount
@@ -91,7 +92,7 @@ class DepartamentoDAO:
         conn = abrir_conexion()
         p = marcador_sql()
         try:
-            with conn.cursor() as cursor:
+            with closing(conn.cursor()) as cursor:
                 sql = f"WHERE id_departamento = {p}"
                 cursor.execute(f"DELETE FROM departamento {sql}", (id_depto,))
                 filas_afectadas = cursor.rowcount

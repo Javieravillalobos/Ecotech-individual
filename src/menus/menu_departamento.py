@@ -19,7 +19,7 @@ def menu_departamentos():
                     print(f"{fila['id_depto']}: {fila['nombre']} | empleados: {fila['empleados']}")
             ejecutar(listar)
         elif op == "3":
-            ejecutar(lambda: print(DepartamentoDAO.buscar_por_id(entero("ID: ")) or "No encontrado."))
+            ejecutar(lambda: print(DepartamentoDAO.obtener_por_id(entero("ID: ")) or "No encontrado."))
         elif op == "4":
             def actualizar():
                 ident = entero("ID: ")
