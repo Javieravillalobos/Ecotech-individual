@@ -142,7 +142,6 @@ def cargar_semilla():
             )
 
         # Insertar Usuario asociado si no existe
-        print(datos)
         usuario_existente = UsuarioDAO.obtener_por_username(datos["usuario"])
         if not usuario_existente:
             nuevo_usuario = Usuario(
