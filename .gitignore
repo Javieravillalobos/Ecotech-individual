@@ -1,9 +1,20 @@
+# Entornos virtuales
+venv/
 .venv/
+env/
+
+# Archivos de Python y caché
 __pycache__/
 *.py[cod]
+*$py.class
+
+# Archivos de sistema (Mac / IDEs)
+.DS_Store
+.idea/
+.vscode/
+
+# Variables de entorno y BD locales
 .env
 *.db
 *.sqlite
 *.sqlite3
-.idea/
-.vscode/
