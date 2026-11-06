@@ -1,4 +1,6 @@
 """DAO para la persistencia de indicadores económicos en la base de datos."""
+from contextlib import closing
+
 from dominio.indicador import Indicador
 from persistencia.conexion import abrir_conexion, motor_actual
 
@@ -9,7 +11,7 @@ class IndicadorDAO:
         """Guarda un indicador en la BD. Si ya existe (fuente, codigo, fecha), no lo duplica."""
         conn = abrir_conexion()
         try:
-            with conn.cursor() as cursor:
+            with closing(conn.cursor()) as cursor:
                 motor = motor_actual()
                 placeholder = "%s" if motor in ("mysql", "mariadb") else "?"
                 
@@ -41,7 +43,7 @@ class IndicadorDAO:
         """Obtiene el último indicador almacenado para el respaldo offline."""
         conn = abrir_conexion()
         try:
-            with conn.cursor() as cursor:
+            with closing(conn.cursor()) as cursor:
                 cursor.execute("""
                     SELECT fuente, codigo, fecha, valor 
                     FROM indicador_api 
@@ -62,7 +64,7 @@ class IndicadorDAO:
         """Obtiene todo el historial registrado en la base de datos local."""
         conn = abrir_conexion()
         try:
-            with conn.cursor() as cursor:
+            with closing(conn.cursor()) as cursor:
                 cursor.execute("""
                     SELECT fuente, codigo, fecha, valor 
                     FROM indicador_api 

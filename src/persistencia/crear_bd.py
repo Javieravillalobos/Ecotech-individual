@@ -69,6 +69,16 @@ def crear_tablas():
                 FOREIGN KEY (proyecto_id) REFERENCES proyecto(id_proyecto) ON DELETE CASCADE
             );
             """,
+            """
+            CREATE TABLE IF NOT EXISTS indicador_api (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                fuente TEXT NOT NULL,
+                codigo TEXT NOT NULL,
+                fecha TEXT NOT NULL,
+                valor REAL NOT NULL,
+                UNIQUE (fuente, codigo, fecha)
+            );
+            """,
         ]
     else:
         # Estructura Nativa para MySQL
@@ -133,6 +143,16 @@ def crear_tablas():
                 descripcion_tarea TEXT,
                 FOREIGN KEY (empleado_id) REFERENCES empleado(id_empleado) ON DELETE CASCADE,
                 FOREIGN KEY (proyecto_id) REFERENCES proyecto(id_proyecto) ON DELETE CASCADE
+            );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS indicador_api (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                fuente VARCHAR(100) NOT NULL,
+                codigo VARCHAR(50) NOT NULL,
+                fecha DATE NOT NULL,
+                valor DECIMAL(18, 6) NOT NULL,
+                UNIQUE KEY uq_indicador_api (fuente, codigo, fecha)
             );
             """,
             "SET FOREIGN_KEY_CHECKS = 1;",

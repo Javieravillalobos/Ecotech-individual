@@ -4,7 +4,7 @@ import requests
 
 def obtener_datos():
     respuesta = requests.get(
-        "https://open.er-api.com/v6/latest/USD",
+        "https://api.exchangerate.fun/latest?base=USD&utm_source=chatgpt.com",
         timeout=(3, 5),
     )
 

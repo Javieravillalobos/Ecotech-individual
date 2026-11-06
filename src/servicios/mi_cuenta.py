@@ -38,3 +38,27 @@ def actualizar_mis_datos(sesion: dict, nombre: str, correo: str) -> bool:
     empleado.nombre = nombre
     empleado.correo = correo
     return EmpleadoDAO.actualizar(empleado)
+
+
+def registrar_mi_tiempo(sesion: dict, proyecto_id: int, fecha: str, horas: float, descripcion: str) -> int:
+    """Guarda horas para el empleado autenticado, nunca para otro empleado."""
+    from datetime import date
+    from math import isfinite
+    from persistencia.proyecto_dao import ProyectoDAO
+    exigir_sesion(sesion)
+    empleado_id = sesion.get("empleado_id")
+    if not isinstance(empleado_id, int) or empleado_id <= 0:
+        raise ValueError("La sesión no tiene un empleado asociado.")
+    if EmpleadoDAO.buscar_por_id(empleado_id) is None:
+        raise ValueError("El empleado no existe.")
+    if ProyectoDAO.obtener_por_id(proyecto_id) is None:
+        raise ValueError("El proyecto no existe.")
+    try:
+        date.fromisoformat(fecha)
+    except (TypeError, ValueError):
+        raise ValueError("Fecha inválida. Use AAAA-MM-DD.")
+    if not isinstance(horas, (int, float)) or not isfinite(horas) or not 0 < horas <= 24:
+        raise ValueError("Las horas deben ser mayores que 0 y hasta 24.")
+    if not isinstance(descripcion, str) or not descripcion.strip():
+        raise ValueError("La descripción es obligatoria.")
+    return RegistroTiempoDAO.insertar(empleado_id, proyecto_id, fecha, horas, descripcion.strip())

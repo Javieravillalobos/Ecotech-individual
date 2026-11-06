@@ -1,6 +1,7 @@
 """Módulo para el menú principal y control de navegación de EcoTech."""
 import getpass
 import sys
+from datetime import date
 
 from persistencia.conexion import motor_actual
 from persistencia.crear_bd import crear_tablas
@@ -8,7 +9,7 @@ from persistencia.semilla_bd import cargar_semilla
 from servicios.autenticacion import autenticar
 from servicios.gestion_empleados import listar_todos_los_empleados
 from servicios.indicadores import consultar_indicador_dolar, obtener_historial_local
-from servicios.mi_cuenta import mis_registros_de_tiempo, ver_mi_ficha
+from servicios.mi_cuenta import mis_registros_de_tiempo, ver_mi_ficha, registrar_mi_tiempo
 
 # Importar submenús existentes del proyecto
 from .menu_departamento import menu_departamentos
@@ -45,8 +46,9 @@ def menu_privado(sesion: dict) -> bool:
         print("=" * 45)
         print("1. Mi Ficha (Datos propios)")
         print("2. Mis Registros de Tiempo")
-        print("3. Consultar Indicador Económico (API Dólar)")
-        print("4. Ver Historial de Indicadores (BD Local)")
+        print("3. Registrar mis horas de trabajo")
+        print("4. Consultar Indicador Económico (API Dólar)")
+        print("5. Ver Historial de Indicadores (BD Local)")
 
         # Opciones administrativas avanzadas (visibles solo para admin)
         if sesion["rol"] == "admin":
@@ -81,15 +83,29 @@ def menu_privado(sesion: dict) -> bool:
                 print(f"\n❌ Error: {err}")
 
         elif opcion == "3":
+            try:
+                proyecto_id = int(input("ID del proyecto: ").strip())
+                fecha = input(f"Fecha AAAA-MM-DD [{date.today().isoformat()}]: ").strip() or date.today().isoformat()
+                horas = float(input("Horas trabajadas (mayor que 0, hasta 24): ").strip().replace(",", "."))
+                descripcion = input("Descripción de la tarea: ").strip()
+                registro_id = registrar_mi_tiempo(sesion, proyecto_id, fecha, horas, descripcion)
+                print(f"Registro de tiempo guardado con ID {registro_id}.")
+            except (ValueError, TypeError) as err:
+                print(f"Datos inválidos: {err}")
+            except Exception as err:
+                print(f"No fue posible guardar el registro: {err}")
+
+        elif opcion == "4":
             print("\nConsultando servicio externo API...")
             res = consultar_indicador_dolar(sesion)
             if res["exito"]:
                 print(f"\n✅ {res['indicador']}")
                 print(f"   Origen: {res['origen']}")
+                print(f"   {res['mensaje']}")
             else:
                 print(f"\n❌ {res['mensaje']}")
 
-        elif opcion == "4":
+        elif opcion == "5":
             try:
                 historial = obtener_historial_local(sesion)
                 print(f"\n📜 HISTORIAL EN BD LOCAL ({len(historial)} registros):")
