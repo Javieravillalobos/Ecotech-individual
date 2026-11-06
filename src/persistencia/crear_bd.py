@@ -1,5 +1,5 @@
 """Creación de tablas para SQLite y MySQL/MariaDB."""
-from .conexion import abrir_conexion, obtener_motor
+from persistencia.conexion import abrir_conexion, obtener_motor
 
 ESQUEMA_SQLITE = """
     CREATE TABLE IF NOT EXISTS departamento (
@@ -61,6 +61,18 @@ ESQUEMA_SQLITE = """
         FOREIGN KEY (empleado_id) REFERENCES empleado(id_empleado) ON DELETE CASCADE,
         FOREIGN KEY (proyecto_id) REFERENCES proyecto(id_proyecto) ON DELETE CASCADE
     );
+<<<<<<< HEAD
+=======
+
+    CREATE TABLE IF NOT EXISTS indicador_api (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fuente TEXT NOT NULL,
+        codigo TEXT NOT NULL,
+        fecha TEXT NOT NULL,
+        valor REAL NOT NULL,
+        UNIQUE (fuente, codigo, fecha)
+    );
+>>>>>>> 1555f2d (Proyecto finalizado)
 """
 
 ESQUEMA_MYSQL = """
@@ -91,6 +103,7 @@ ESQUEMA_MYSQL = """
         CONSTRAINT chk_empleado_salario CHECK (salario >= 0)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+<<<<<<< HEAD
     -- FK de departamento hacia empleado agregada tras la creación de ambas tablas
     ALTER TABLE departamento
         ADD CONSTRAINT fk_departamento_gerente
@@ -142,6 +155,52 @@ ESQUEMA_MYSQL = """
             ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+=======
+    CREATE TABLE IF NOT EXISTS usuario (
+        id INT NOT NULL AUTO_INCREMENT,
+        empleado_id INT NOT NULL,
+        username VARCHAR(100) NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        rol VARCHAR(20) NOT NULL DEFAULT 'empleado',
+        PRIMARY KEY (id),
+        UNIQUE KEY uq_usuario_empleado (empleado_id),
+        UNIQUE KEY uq_usuario_username (username),
+        CONSTRAINT fk_usuario_empleado
+            FOREIGN KEY (empleado_id)
+            REFERENCES empleado(id_empleado)
+            ON DELETE CASCADE,
+        CONSTRAINT chk_usuario_rol CHECK (rol IN ('admin', 'empleado'))
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    CREATE TABLE IF NOT EXISTS proyecto (
+        id_proyecto INT NOT NULL AUTO_INCREMENT,
+        nombre VARCHAR(200) NOT NULL,
+        descripcion TEXT NOT NULL,
+        fecha_inicio VARCHAR(10) NOT NULL DEFAULT '',
+        fecha_fin VARCHAR(10) NOT NULL DEFAULT '',
+        PRIMARY KEY (id_proyecto),
+        CONSTRAINT chk_proyecto_fechas CHECK (
+            fecha_fin = ''
+            OR fecha_inicio = ''
+            OR fecha_fin >= fecha_inicio
+        )
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    CREATE TABLE IF NOT EXISTS proyecto_empleado (
+        proyecto_id INT NOT NULL,
+        empleado_id INT NOT NULL,
+        PRIMARY KEY (proyecto_id, empleado_id),
+        CONSTRAINT fk_pe_proyecto
+            FOREIGN KEY (proyecto_id)
+            REFERENCES proyecto(id_proyecto)
+            ON DELETE CASCADE,
+        CONSTRAINT fk_pe_empleado
+            FOREIGN KEY (empleado_id)
+            REFERENCES empleado(id_empleado)
+            ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+>>>>>>> 1555f2d (Proyecto finalizado)
     CREATE TABLE IF NOT EXISTS registro_tiempo (
         id_registro INT NOT NULL AUTO_INCREMENT,
         empleado_id INT NOT NULL,
@@ -162,6 +221,19 @@ ESQUEMA_MYSQL = """
             horas_trabajadas > 0 AND horas_trabajadas <= 24
         )
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+<<<<<<< HEAD
+=======
+
+    CREATE TABLE IF NOT EXISTS indicador_api (
+        id INT NOT NULL AUTO_INCREMENT,
+        fuente VARCHAR(50) NOT NULL,
+        codigo VARCHAR(20) NOT NULL,
+        fecha DATE NOT NULL,
+        valor DECIMAL(10,2) NOT NULL,
+        PRIMARY KEY (id),
+        UNIQUE KEY uq_fuente_codigo_fecha (fuente, codigo, fecha)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+>>>>>>> 1555f2d (Proyecto finalizado)
 """
 
 def crear_tablas():
@@ -176,7 +248,6 @@ def crear_tablas():
             conn.commit()
         elif motor in ("mysql", "mariadb"):
             with conn.cursor() as cursor:
-                # Dividir el script por ';' para ejecutar sentencia por sentencia en PyMySQL
                 sentencias = ESQUEMA_MYSQL.split(";")
                 for sentencia in sentencias:
                     sentencia_limpia = sentencia.strip()
@@ -198,4 +269,4 @@ def crear_tablas():
 
 if __name__ == "__main__":
     crear_tablas()
-    print("Base de datos preparada.")
+    print("Base de datos preparada con la tabla 'indicador_api'.")

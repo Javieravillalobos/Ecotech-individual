@@ -3,18 +3,15 @@
 Ejecutar desde la carpeta src:
     python -m persistencia.crear_bd
     python -m persistencia.semilla_bd
-
-El script usa los DAO existentes y consulta las tablas únicamente para
-comprobar relaciones/duplicados que los DAO todavía no exponen.
 """
-from datetime import date
-
-from dominio.empleado import Empleado
 from persistencia.conexion import abrir_conexion
 from persistencia.departamento_dao import DepartamentoDAO
 from persistencia.empleado_dao import EmpleadoDAO
+from persistencia.usuario_dao import UsuarioDAO
 from persistencia.proyecto_dao import ProyectoDAO
 from persistencia.registro_tiempo_dao import RegistroTiempoDAO
+from dominio.empleado import Empleado
+from dominio.usuario import Usuario
 
 
 DEPARTAMENTOS = [
@@ -23,52 +20,55 @@ DEPARTAMENTOS = [
     "Sustentabilidad",
 ]
 
-# Contraseñas solo para ambiente académico local. UsuarioDAO/Empleado
-# almacena hash PBKDF2 a través del método existente de persistencia.
-EMPLEADOS = [
+# Definición de empleados y sus credenciales de usuario correspondientes
+EMPLEADOS_Y_USUARIOS = [
     {
-        "usuario": "semilla.ana",
-        "contraseña": "EcoTechDemo2026!",
         "nombre": "Ana González",
         "correo": "ana.gonzalez.demo@ecotech.local",
         "direccion": "Oficina central",
         "telefono": "+56911111111",
         "salario": 950000,
-        "rol": "Gerente",
         "departamento": "Administración",
+        "es_gerente": True,
+        "usuario": "semilla.ana",
+        "contraseña": "EcoTechDemo2026!",
+        "rol": "admin",
     },
     {
-        "usuario": "semilla.carlos",
-        "contraseña": "EcoTechDemo2026!",
         "nombre": "Carlos Muñoz",
         "correo": "carlos.munoz.demo@ecotech.local",
         "direccion": "Santiago",
         "telefono": "+56922222222",
         "salario": 780000,
-        "rol": "Empleado",
         "departamento": "Tecnología",
+        "es_gerente": False,
+        "usuario": "semilla.carlos",
+        "contraseña": "EcoTechDemo2026!",
+        "rol": "empleado",
     },
     {
-        "usuario": "semilla.valentina",
-        "contraseña": "EcoTechDemo2026!",
         "nombre": "Valentina Rojas",
         "correo": "valentina.rojas.demo@ecotech.local",
         "direccion": "Santiago",
         "telefono": "+56933333333",
         "salario": 820000,
-        "rol": "Gerente",
         "departamento": "Sustentabilidad",
+        "es_gerente": True,
+        "usuario": "semilla.valentina",
+        "contraseña": "EcoTechDemo2026!",
+        "rol": "empleado",
     },
     {
-        "usuario": "semilla.diego",
-        "contraseña": "EcoTechDemo2026!",
         "nombre": "Diego Pérez",
         "correo": "diego.perez.demo@ecotech.local",
         "direccion": "Santiago",
         "telefono": "+56944444444",
         "salario": 690000,
-        "rol": "Empleado",
         "departamento": "Tecnología",
+        "es_gerente": False,
+        "usuario": "semilla.diego",
+        "contraseña": "EcoTechDemo2026!",
+        "rol": "empleado",
     },
 ]
 
@@ -88,107 +88,90 @@ PROYECTOS = [
 ]
 
 REGISTROS = [
-    ("semilla.carlos", "Plataforma de reciclaje inteligente",
-     "2026-10-12", 4.0, "Implementación de módulo de seguimiento"),
-    ("semilla.diego", "Plataforma de reciclaje inteligente",
-     "2026-10-13", 3.5, "Pruebas de validación de datos"),
-    ("semilla.valentina", "Optimización energética EcoTech",
-     "2026-10-13", 2.0, "Revisión de indicadores energéticos"),
-    ("semilla.ana", "Optimización energética EcoTech",
-     "2026-10-14", 1.5, "Coordinación y revisión de avances"),
+    ("semilla.carlos", "Plataforma de reciclaje inteligente", "2026-10-12", 4.0, "Implementación de módulo de seguimiento"),
+    ("semilla.diego", "Plataforma de reciclaje inteligente", "2026-10-13", 3.5, "Pruebas de validación de datos"),
+    ("semilla.valentina", "Optimización energética EcoTech", "2026-10-13", 2.0, "Revisión de indicadores energéticos"),
+    ("semilla.ana", "Optimización energética EcoTech", "2026-10-14", 1.5, "Coordinación y revisión de avances"),
 ]
 
 
 def cargar_semilla():
-    """Inserta únicamente registros que aún no existen."""
-    conn = abrir_conexion()
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT username FROM usuario")
-            usuarios_existentes = {fila["username"] for fila in cursor.fetchall()}
-    finally:
-        conn.close()
-
-    departamentos_por_nombre = {
-        fila["nombre"]: int(fila["id_depto"])
-        for fila in DepartamentoDAO.listar()
-    }
+    """Inserta datos iniciales garantizando la integridad referencial."""
+    
+    # 1. Departamentos
+    deptos_existentes = {f["nombre"]: int(f["id_depto"]) for f in DepartamentoDAO.listar()}
     for nombre in DEPARTAMENTOS:
-        if nombre not in departamentos_por_nombre:
-            DepartamentoDAO.insertar(nombre)
+        if nombre not in deptos_existentes:
+            id_depto = DepartamentoDAO.insertar(nombre)
+            deptos_existentes[nombre] = id_depto
 
-    departamentos_por_nombre = {
-        fila["nombre"]: int(fila["id_depto"])
-        for fila in DepartamentoDAO.listar()
-    }
-
-    # También se comprueban los correos para no intentar duplicar una
-    # persona si ya existe con otro nombre de usuario.
+    # 2. Empleados y Usuarios
     empleados_existentes = EmpleadoDAO.listar()
-    usernames_existentes = {e.username for e in empleados_existentes}
-    correos_existentes = {e.correo.casefold() for e in empleados_existentes}
-
-    empleados_por_usuario = {
-        e.username: e for e in empleados_existentes
-    }
-
+    correos_existentes = {e.correo.casefold(): e for e in empleados_existentes}
+    
     empleados_creados = 0
-    for datos in EMPLEADOS:
-        if datos["usuario"] in usernames_existentes:
-            empleados_por_usuario[datos["usuario"]] = next(
-                e for e in empleados_existentes
-                if e.username == datos["usuario"]
+    usuarios_creados = 0
+    empleados_por_usuario = {}
+
+    for datos in EMPLEADOS_Y_USUARIOS:
+        correo_key = datos["correo"].casefold()
+        
+        # Insertar o recuperar Empleado
+        if correo_key in correos_existentes:
+            empleado = correos_existentes[correo_key]
+        else:
+            empleado = Empleado(
+                nombre=datos["nombre"],
+                correo=datos["correo"],
+                direccion=datos["direccion"],
+                telefono=datos["telefono"],
+                salario=datos["salario"],
+                departamento_id=deptos_existentes[datos["departamento"]],
             )
-            continue
+            EmpleadoDAO.insertar(empleado)
+            correos_existentes[correo_key] = empleado
+            empleados_creados += 1
 
-        if datos["correo"].casefold() in correos_existentes:
-            print(
-                "AVISO: se omitió el empleado "
-                f"{datos['usuario']} porque el correo ya existe."
+        empleados_por_usuario[datos["usuario"]] = empleado
+
+        # Asignar Gerente al Departamento si corresponde
+        if datos.get("es_gerente"):
+            DepartamentoDAO.asignar_gerente(
+                id_depto=deptos_existentes[datos["departamento"]],
+                gerente_id=empleado.id_empleado
             )
-            continue
 
-        empleado = Empleado(
-            username=datos["usuario"],
-            password=datos["contraseña"],
-            nombre=datos["nombre"],
-            correo=datos["correo"],
-            direccion=datos["direccion"],
-            telefono=datos["telefono"],
-            salario=datos["salario"],
-            rol=datos["rol"],
-            departamento_id=departamentos_por_nombre[datos["departamento"]],
-        )
-        EmpleadoDAO.insertar(empleado)
-        empleados_por_usuario[empleado.username] = empleado
-        usernames_existentes.add(empleado.username)
-        correos_existentes.add(empleado.correo.casefold())
-        empleados_creados += 1
+        # Insertar Usuario asociado si no existe
+        usuario_existente = UsuarioDAO.obtener_por_username(datos["usuario"])
+        if not usuario_existente:
+            nuevo_usuario = Usuario(
+                username=datos["usuario"],
+                password=datos["contraseña"],
+                empleado_id=empleado.id_empleado,
+                rol=datos["rol"],
+            )
+            UsuarioDAO.insertar(nuevo_usuario)
+            usuarios_creados += 1
 
-    proyectos_por_nombre = {
-        fila["nombre"]: int(fila["id_proyecto"])
-        for fila in ProyectoDAO.listar()
-    }
+    # 3. Proyectos
+    proyectos_existentes = {f["nombre"]: int(f["id_proyecto"]) for f in ProyectoDAO.listar()}
     proyectos_creados = 0
+
     for datos in PROYECTOS:
-        if datos["nombre"] not in proyectos_por_nombre:
-            ident = ProyectoDAO.insertar(
+        if datos["nombre"] not in proyectos_existentes:
+            p_id = ProyectoDAO.insertar(
                 datos["nombre"], datos["descripcion"],
                 datos["fecha_inicio"], datos["fecha_fin"]
             )
-            proyectos_por_nombre[datos["nombre"]] = ident
+            proyectos_existentes[datos["nombre"]] = p_id
             proyectos_creados += 1
 
-    # Relación proyecto-empleado: se comprueba antes de insertar para
-    # que ejecutar la semilla otra vez no choque con la clave primaria.
+    # 4. Asignaciones Proyecto - Empleado
     conn = abrir_conexion()
     try:
         with conn.cursor() as cursor:
             cursor.execute("SELECT proyecto_id, empleado_id FROM proyecto_empleado")
-            relaciones = {
-                (int(f["proyecto_id"]), int(f["empleado_id"]))
-                for f in cursor.fetchall()
-            }
+            relaciones = {(int(f["proyecto_id"]), int(f["empleado_id"])) for f in cursor.fetchall()}
     finally:
         conn.close()
 
@@ -199,18 +182,18 @@ def cargar_semilla():
         ("Optimización energética EcoTech", "semilla.valentina"),
         ("Optimización energética EcoTech", "semilla.ana"),
     ]
-    for nombre_proyecto, username in asignaciones:
-        empleado = empleados_por_usuario.get(username)
-        proyecto_id = proyectos_por_nombre.get(nombre_proyecto)
-        if empleado is None or empleado.id_empleado is None or proyecto_id is None:
-            print(f"AVISO: no se pudo asignar {username} a {nombre_proyecto}.")
-            continue
-        relacion = (proyecto_id, int(empleado.id_empleado))
-        if relacion not in relaciones:
-            ProyectoDAO.asignar_empleado(*relacion)
-            relaciones.add(relacion)
-            relaciones_creadas += 1
 
+    for nombre_proyecto, username in asignaciones:
+        emp = empleados_por_usuario.get(username)
+        p_id = proyectos_existentes.get(nombre_proyecto)
+        if emp and emp.id_empleado and p_id:
+            pair = (p_id, int(emp.id_empleado))
+            if pair not in relaciones:
+                ProyectoDAO.asignar_empleado(*pair)
+                relaciones.add(pair)
+                relaciones_creadas += 1
+
+    # 5. Registros de Tiempo
     registros_existentes = RegistroTiempoDAO.listar()
     claves_registros = {
         (
@@ -223,56 +206,42 @@ def cargar_semilla():
 
     registros_creados = 0
     for username, nombre_proyecto, fecha, horas, descripcion in REGISTROS:
-        empleado = empleados_por_usuario.get(username)
-        proyecto_id = proyectos_por_nombre.get(nombre_proyecto)
-        if empleado is None or empleado.id_empleado is None or proyecto_id is None:
-            print(
-                "AVISO: se omitió un registro de tiempo por falta de "
-                "empleado o proyecto válido."
-            )
-            continue
+        emp = empleados_por_usuario.get(username)
+        p_id = proyectos_existentes.get(nombre_proyecto)
+        if emp and emp.id_empleado and p_id:
+            clave = (int(emp.id_empleado), int(p_id), fecha, float(horas), descripcion)
+            if clave not in claves_registros:
+                RegistroTiempoDAO.insertar(
+                    int(emp.id_empleado), int(p_id),
+                    fecha, horas, descripcion
+                )
+                claves_registros.add(clave)
+                registros_creados += 1
 
-        clave = (
-            int(empleado.id_empleado), int(proyecto_id),
-            fecha, float(horas), descripcion
-        )
-        if clave in claves_registros:
-            continue
-
-        RegistroTiempoDAO.insertar(
-            int(empleado.id_empleado), int(proyecto_id),
-            fecha, horas, descripcion
-        )
-        claves_registros.add(clave)
-        registros_creados += 1
-
-    # Resumen con cantidades totales reales de la base.
+    # Resumen de ejecución
     conn = abrir_conexion()
     try:
         conteos = {}
         with conn.cursor() as cursor:
-            for tabla in (
-                "departamento", "usuario", "empleado",
-                "proyecto", "proyecto_empleado", "registro_tiempo"
-            ):
+            for tabla in ("departamento", "empleado", "usuario", "proyecto", "proyecto_empleado", "registro_tiempo"):
                 cursor.execute(f"SELECT COUNT(*) AS total FROM {tabla}")
-                resultado = cursor.fetchone()
-                conteos[tabla] = resultado["total"]
+                conteos[tabla] = cursor.fetchone()["total"]
     finally:
         conn.close()
 
-    print("\nSemilla finalizada.")
-    print(f"Departamentos totales: {conteos['departamento']}")
-    print(f"Usuarios totales: {conteos['usuario']}")
-    print(f"Empleados totales: {conteos['empleado']}")
-    print(f"Proyectos totales: {conteos['proyecto']}")
-    print(f"Asignaciones proyecto-empleado: {conteos['proyecto_empleado']}")
-    print(f"Registros de tiempo totales: {conteos['registro_tiempo']}")
+    print("\n✓ Carga de semilla finalizada con éxito.")
+    print(f"Departamentos en BD: {conteos['departamento']}")
+    print(f"Empleados en BD:     {conteos['empleado']}")
+    print(f"Usuarios en BD:       {conteos['usuario']}")
+    print(f"Proyectos en BD:     {conteos['proyecto']}")
+    print(f"Asignaciones P-E:    {conteos['proyecto_empleado']}")
+    print(f"Registros de tiempo: {conteos['registro_tiempo']}")
     print("\nInsertados en esta ejecución:")
-    print(f"  Empleados: {empleados_creados}")
-    print(f"  Proyectos: {proyectos_creados}")
-    print(f"  Asignaciones: {relaciones_creadas}")
-    print(f"  Registros de tiempo: {registros_creados}")
+    print(f"  + Empleados nuevos: {empleados_creados}")
+    print(f"  + Usuarios nuevos:  {usuarios_creados}")
+    print(f"  + Proyectos nuevos: {proyectos_creados}")
+    print(f"  + Asignaciones:     {relaciones_creadas}")
+    print(f"  + Registros tiempo: {registros_creados}")
 
 
 if __name__ == "__main__":

@@ -1,32 +1,63 @@
+"""Servicio que coordina la consulta a la API del dólar, su guardado local y el respaldo offline."""
 import requests
-from dominio.indicador import Indicador
-# Importarás tu indicador_dao cuando lo tengas listo
-# from persistencia.indicador_dao import IndicadorDAO 
+from persistencia.indicador_dao import IndicadorDAO
+from servicios.deserializador_indicador import DeserializadorIndicador
+from servicios.permisos import exigir_sesion
 
 URL_API_INDICADORS = "https://mindicador.cl/api/dolar"
 
-def obtener_y_guardar_dolar():
-    """Consulta la API externa, deserializa el indicador y lo almacena."""
+
+def consultar_indicador_dolar(sesion: dict) -> dict:
+    """
+    Exige sesión activa, consulta la API externa del dólar, persiste el dato en BD local 
+    y retorna el resultado. Si la API falla, busca la última observación guardada (Respaldo).
+    """
+    exigir_sesion(sesion)  # Control de permisos
+
     try:
         respuesta = requests.get(URL_API_INDICADORS, timeout=5)
         if respuesta.status_code != 200:
             raise ConnectionError("No se pudo conectar con la API de indicadores.")
-        
-        datos = respuesta.json()
-        # Tomamos el valor más reciente de la serie que entrega la API
-        serie = datos.get("serie", [])
-        if not serie:
-            raise ValueError("La API no devolvió datos en la serie.")
-        
-        ultimo_registro = serie[0]
-        fecha = ultimo_registro.get("fecha")[:10]  # Extraer solo YYYY-MM-DD
-        valor = ultimo_registro.get("valor")
-        
-        indicador = Indicador(fecha=fecha, valor=valor, fuente="mindicador.cl")
-        
-        # Aquí guardarías con el DAO (ej: IndicadorDAO.insertar_si_no_existe(indicador))
-        return indicador
 
-    except requests.RequestException:
-        # Respaldo en caso de que falle la red
-        raise ConnectionError("Error de red al intentar consumir la API del dólar.")
+        datos = respuesta.json()
+        
+        # Deserialización usando la clase especializada
+        indicador = DeserializadorIndicador.desde_api(datos)
+
+        # Persistir localmente en la base de datos sin duplicar
+        guardado_ok = IndicadorDAO.guardar(indicador)
+
+        return {
+            "exito": True,
+            "origen": "API (mindicador.cl)",
+            "indicador": indicador,
+            "guardado_bd": guardado_ok,
+            "mensaje": "Consulta realizada con éxito a la API externa.",
+        }
+
+    except (requests.RequestException, ValueError, KeyError, TypeError, ConnectionError) as error:
+        # Contingencia / Respaldo Offline en caso de falla de red o API
+        respaldo = IndicadorDAO.obtener_ultimo()
+
+        if respaldo:
+            return {
+                "exito": True,
+                "origen": "BD Local (Respaldo Offline)",
+                "indicador": respaldo,
+                "guardado_bd": False,
+                "mensaje": f"Falla en servicio externo ({error}). Mostrando último dato disponible en BD.",
+            }
+
+        return {
+            "exito": False,
+            "origen": "Ninguno",
+            "indicador": None,
+            "guardado_bd": False,
+            "mensaje": "No hay conexión con la API ni registros locales guardados.",
+        }
+
+
+def obtener_historial_local(sesion: dict) -> list:
+    """Devuelve todo el historial almacenado en la base de datos local."""
+    exigir_sesion(sesion)
+    return IndicadorDAO.listar_historial()

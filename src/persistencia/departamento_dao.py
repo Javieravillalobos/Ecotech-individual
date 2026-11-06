@@ -1,25 +1,19 @@
 from .conexion import abrir_conexion, marcador_sql
+from dominio.departamento import Departamento
 
 
 class DepartamentoDAO:
-
     @staticmethod
-    def insertar(nombre):
-        """Inserta un nuevo departamento y devuelve su ID generado."""
-        nombre = nombre.strip()
-        if not nombre:
-            raise ValueError("El nombre es obligatorio.")
-        
+    def insertar(nombre: str, gerente_id: int | None = None) -> int:
         conn = abrir_conexion()
-        placeholder = marcador_sql()
+        p = marcador_sql()
         try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    f"INSERT INTO departamento (nombre) VALUES ({placeholder})",
-                    (nombre,)
-                )
-                conn.commit()
-                return cur.lastrowid
+            with conn.cursor() as cursor:
+                sql = f"INSERT INTO departamento (nombre, gerente_id) VALUES ({p}, {p})"
+                cursor.execute(sql, (nombre.strip(), gerente_id))
+                id_generado = cursor.lastrowid
+            conn.commit()
+            return id_generado
         except Exception:
             conn.rollback()
             raise
@@ -27,73 +21,25 @@ class DepartamentoDAO:
             conn.close()
 
     @staticmethod
-    def listar():
-        """Devuelve la lista de departamentos con su conteo de empleados."""
+    def listar() -> list[dict]:
         conn = abrir_conexion()
         try:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    SELECT d.id_depto, d.nombre, COUNT(e.id_empleado) AS empleados
-                    FROM departamento d 
-                    LEFT JOIN empleado e ON e.departamento_id = d.id_depto
-                    GROUP BY d.id_depto 
-                    ORDER BY d.id_depto
-                """)
-                return cur.fetchall()
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT id_depto, nombre, gerente_id FROM departamento")
+                return cursor.fetchall()
         finally:
             conn.close()
 
     @staticmethod
-    def buscar_por_id(id_depto):
-        """Busca un departamento por su ID."""
+    def asignar_gerente(id_depto: int, gerente_id: int | None) -> bool:
         conn = abrir_conexion()
-        placeholder = marcador_sql()
+        p = marcador_sql()
         try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    f"SELECT * FROM departamento WHERE id_depto = {placeholder}",
-                    (id_depto,)
-                )
-                return cur.fetchone()
-        finally:
-            conn.close()
-
-    @staticmethod
-    def actualizar(id_depto, nombre):
-        """Actualiza el nombre de un departamento."""
-        nombre = nombre.strip()
-        if not nombre:
-            raise ValueError("El nombre es obligatorio.")
-        
-        conn = abrir_conexion()
-        placeholder = marcador_sql()
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    f"UPDATE departamento SET nombre = {placeholder} WHERE id_depto = {placeholder}",
-                    (nombre, id_depto)
-                )
-                conn.commit()
-                return cur.rowcount > 0
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
-
-    @staticmethod
-    def eliminar(id_depto):
-        """Elimina un departamento por su ID."""
-        conn = abrir_conexion()
-        placeholder = marcador_sql()
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    f"DELETE FROM departamento WHERE id_depto = {placeholder}",
-                    (id_depto,)
-                )
-                conn.commit()
-                return cur.rowcount > 0
+            with conn.cursor() as cursor:
+                sql = f"UPDATE departamento SET gerente_id = {p} WHERE id_depto = {p}"
+                cursor.execute(sql, (gerente_id, id_depto))
+            conn.commit()
+            return True
         except Exception:
             conn.rollback()
             raise

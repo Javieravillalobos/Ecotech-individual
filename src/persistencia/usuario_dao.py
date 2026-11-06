@@ -3,114 +3,32 @@ from dominio.usuario import Usuario
 
 
 class UsuarioDAO:
-
     @staticmethod
-    def insertar(u):
+    def insertar(usuario: Usuario) -> int:
+        if not usuario.empleado_id:
+            raise ValueError("No se puede crear un usuario sin asociar un empleado_id.")
+
         conn = abrir_conexion()
-        ph = marcador_sql()
+        p = marcador_sql()
         try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    f"""
-                    INSERT INTO usuario(username, password_hash, empleado_id)
-                    VALUES ({ph}, {ph}, {ph})
-                    """,
-                    (u.username, u.password, u.id_empleado)
-                )
-                u.id = cur.lastrowid
-                conn.commit()
-                return u
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
-
-    @staticmethod
-    def _desde_fila(row):
-        obj = Usuario.__new__(Usuario)
-        obj.id = row["id"]
-        obj.username = row["username"]
-        obj.password = row["password_hash"]
-        obj.id_empleado = row["empleado_id"]
-        return obj
-
-    @staticmethod
-    def buscar_por_id(id_usuario):
-        conn = abrir_conexion()
-        ph = marcador_sql()
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    f"""
-                    SELECT *
-                    FROM usuario
-                    WHERE id = {ph}
-                    """,
-                    (id_usuario,)
-                )
-                row = cur.fetchone()
-                return UsuarioDAO._desde_fila(row) if row else None
-        finally:
-            conn.close()
-
-    @staticmethod
-    def buscar_por_username(username):
-        conn = abrir_conexion()
-        ph = marcador_sql()
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    f"""
-                    SELECT *
-                    FROM usuario
-                    WHERE username = {ph}
-                    """,
-                    (username,)
-                )
-                row = cur.fetchone()
-                return UsuarioDAO._desde_fila(row) if row else None
-        finally:
-            conn.close()
-
-    @staticmethod
-    def listar():
-        conn = abrir_conexion()
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT *
-                    FROM usuario
-                    ORDER BY id
-                    """
-                )
-                rows = cur.fetchall()
-                return [UsuarioDAO._desde_fila(row) for row in rows]
-        finally:
-            conn.close()
-
-    @staticmethod
-    def actualizar(u):
-        conn = abrir_conexion()
-        ph = marcador_sql()
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    f"""
-                    UPDATE usuario
-                    SET username = {ph}, password_hash = {ph}, empleado_id = {ph}
-                    WHERE id = {ph}
-                    """,
+            with conn.cursor() as cursor:
+                sql = f"""
+                    INSERT INTO usuario (empleado_id, username, password_hash, rol)
+                    VALUES ({p}, {p}, {p}, {p})
+                """
+                cursor.execute(
+                    sql,
                     (
-                        u.username,
-                        u.password,
-                        u.id_empleado,
-                        u.id
-                    )
+                        usuario.empleado_id,
+                        usuario.username,
+                        usuario._hash_para_persistencia(),
+                        usuario.rol,
+                    ),
                 )
-                conn.commit()
-                return cur.rowcount > 0
+                id_generado = cursor.lastrowid
+                usuario.id = id_generado
+            conn.commit()
+            return id_generado
         except Exception:
             conn.rollback()
             raise
@@ -118,22 +36,25 @@ class UsuarioDAO:
             conn.close()
 
     @staticmethod
-    def eliminar(id_usuario):
+    def obtener_por_username(username: str) -> Usuario | None:
         conn = abrir_conexion()
-        ph = marcador_sql()
+        p = marcador_sql()
         try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    f"""
-                    DELETE FROM usuario
-                    WHERE id = {ph}
-                    """,
-                    (id_usuario,)
+            with conn.cursor() as cursor:
+                sql = f"""
+                    SELECT id, empleado_id, username, password_hash, rol 
+                    FROM usuario WHERE username = {p}
+                """
+                cursor.execute(sql, (username.strip(),))
+                f = cursor.fetchone()
+                if not f:
+                    return None
+                return Usuario.desde_hash(
+                    id_usuario=f["id"],
+                    username=f["username"],
+                    password_hash=f["password_hash"],
+                    empleado_id=f["empleado_id"],
+                    rol=f["rol"],
                 )
-                conn.commit()
-                return cur.rowcount > 0
-        except Exception:
-            conn.rollback()
-            raise
         finally:
             conn.close()

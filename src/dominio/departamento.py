@@ -1,10 +1,11 @@
 class Departamento:
-    def __init__(self, id_depto=None, nombre=""):
+    def __init__(self, id_depto=None, nombre="", gerente_id=None):
         nombre = nombre.strip()
         if not nombre:
             raise ValueError("El nombre del departamento es obligatorio.")
         self.id_depto = id_depto
         self.nombre = nombre
+        self.gerente_id = gerente_id
         self._empleados = []
         self._gerente = None
 
@@ -23,12 +24,14 @@ class Departamento:
         self._empleados.remove(empleado)
         if self._gerente is empleado:
             self._gerente = None
+            self.gerente_id = None
         return True
 
     def asignar_gerente(self, empleado) -> bool:
         if empleado not in self._empleados:
             return False
         self._gerente = empleado
+        self.gerente_id = getattr(empleado, "id_empleado", None)
         return True
 
     @property

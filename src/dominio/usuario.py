@@ -4,16 +4,38 @@ import os
 
 
 class Usuario:
-    """Usuario del sistema; guarda un hash PBKDF2, nunca la contraseña original."""
+    """Usuario del sistema; vincula a un empleado y gestiona el hash PBKDF2 y roles."""
 
-    def __init__(self, username: str, password: str):
+    ROLES_PERMITIDOS = {"admin", "empleado"}
+
+    def __init__(
+        self,
+        username: str,
+        password: str | None = None,
+        empleado_id: int | None = None,
+        rol: str = "empleado",
+        id_usuario: int | None = None,
+        password_hash: str | None = None,
+    ):
         username = username.strip()
         if not username:
             raise ValueError("El nombre de usuario es obligatorio.")
-        if not password:
-            raise ValueError("La contraseña es obligatoria.")
+        
+        rol_clean = rol.strip().lower()
+        if rol_clean not in self.ROLES_PERMITIDOS:
+            raise ValueError(f"Rol no válido. Debe ser uno de: {self.ROLES_PERMITIDOS}")
+
+        self.id = id_usuario
+        self.empleado_id = empleado_id
         self.username = username
-        self._password_hash = self._crear_hash(password)
+        self.rol = rol_clean
+
+        if password_hash:
+            self._password_hash = password_hash
+        elif password:
+            self._password_hash = self._crear_hash(password)
+        else:
+            raise ValueError("Debe proporcionar una contraseña o un hash existente.")
 
     @staticmethod
     def _crear_hash(password: str, salt: bytes | None = None) -> str:
@@ -24,12 +46,16 @@ class Usuario:
         return f"{salt.hex()}${derived.hex()}"
 
     @classmethod
-    def desde_hash(cls, username: str, password_hash: str):
-        """Reconstruye el objeto desde la base sin tratar el hash como contraseña."""
-        obj = cls.__new__(cls)
-        obj.username = username
-        obj._password_hash = password_hash
-        return obj
+    def desde_hash(cls, username: str, password_hash: str, empleado_id: int | None = None, rol: str = "empleado", id_usuario: int | None = None):
+        """Reconstruye el objeto desde la base de datos sin tratar el hash como contraseña."""
+        return cls(
+            username=username,
+            password=None,
+            empleado_id=empleado_id,
+            rol=rol,
+            id_usuario=id_usuario,
+            password_hash=password_hash,
+        )
 
     def autenticar(self, password: str) -> bool:
         try:
@@ -47,8 +73,4 @@ class Usuario:
         return True
 
     def _hash_para_persistencia(self) -> str:
-        """Uso interno de persistencia; no imprime ni expone el hash en el menú."""
         return self._password_hash
-
-    def exportarReporte(self, tipo: str, formato: str) -> bool:
-        return bool(tipo.strip() and formato.strip())

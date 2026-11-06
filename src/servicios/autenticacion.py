@@ -4,49 +4,70 @@ from persistencia.usuario_dao import UsuarioDAO
 
 MAX_BYTES_BCRYPT = 72
 
-def crear_hash(clave):
+
+def crear_hash(clave: str) -> str:
     """Valida la contraseña y genera su hash con bcrypt."""
-    clave = Usuario.validar_clave(clave)
+    if not clave:
+        raise ValueError("La contraseña no puede estar vacía.")
+
     clave_bytes = clave.encode("utf-8")
     if len(clave_bytes) > MAX_BYTES_BCRYPT:
         raise ValueError("Máximo 72 bytes UTF-8 para bcrypt.")
+
     return bcrypt.hashpw(clave_bytes, bcrypt.gensalt()).decode("utf-8")
 
-def registrar_usuario(empleado_id, nombre, clave):
+
+def registrar_usuario(
+    empleado_id: int, nombre: str, clave: str, rol: str = "empleado"
+):
     """Registra una nueva cuenta vinculada a un empleado."""
-    nombre = Usuario.normalizar_usuario(nombre)
-    if UsuarioDAO.buscar_por_username(nombre) is not None:
+    if not nombre:
+        raise ValueError("El nombre de usuario no puede estar vacío.")
+
+    nombre_limpio = nombre.strip().lower()
+
+    if UsuarioDAO.obtener_por_username(nombre_limpio) is not None:
         raise ValueError("El nombre de usuario ya existe.")
-    
-    hash_guardado = crear_hash(clave)
-    usuario = Usuario(nombre, hash_guardado, empleado_id)
+
+    # Instanciación según el modelo de dominio Usuario
+    usuario = Usuario(
+        username=nombre_limpio,
+        password=clave,
+        empleado_id=empleado_id,
+        rol=rol,
+    )
+
     return UsuarioDAO.insertar(usuario)
 
-def autenticar(nombre, clave):
+
+def autenticar(nombre: str, clave: str) -> dict | None:
     """Verifica las credenciales y devuelve los datos de la sesión si son válidos."""
     try:
-        nombre = Usuario.normalizar_usuario(nombre)
-    except (TypeError, ValueError):
+        if not nombre or not clave:
+            return None
+        nombre_limpio = nombre.strip().lower()
+    except (TypeError, ValueError, AttributeError):
         return None
 
-    if not isinstance(clave, str):
+    # Validar tamaño máximo para el búfer de clave
+    clave_bytes = clave.encode("utf-8")
+    if not (0 < len(clave_bytes) <= MAX_BYTES_BCRYPT):
         return None
 
-    datos = clave.encode("utf-8")
-    if not (0 < len(datos) <= MAX_BYTES_BCRYPT):
-        return None
-
-    cuenta = UsuarioDAO.buscar_por_username(nombre)
+    # Obtener la cuenta desde el DAO
+    cuenta = UsuarioDAO.obtener_por_username(nombre_limpio)
     if cuenta is None:
         return None
 
-    if not bcrypt.checkpw(datos, cuenta.password.encode("utf-8")):
+    # Autenticación delegada al método nativo de la entidad Usuario
+    if not cuenta.autenticar(clave):
         return None
 
-    # Devuelve el diccionario de sesión con los datos requeridos por las diapos
+    # Diccionario de sesión estandarizado compatible con menu_principal.py
     return {
-        "id": cuenta.id,
-        "empleado_id": cuenta.id_empleado,
+        "id_usuario": cuenta.id,
+        "username": cuenta.username,
         "nombre_usuario": cuenta.username,
-        "rol": getattr(cuenta, "rol", "empleado")
+        "rol": cuenta.rol,
+        "empleado_id": cuenta.empleado_id,
     }

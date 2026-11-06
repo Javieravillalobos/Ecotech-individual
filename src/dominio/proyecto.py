@@ -1,33 +1,40 @@
+"""Entidad de dominio Proyecto."""
+
+
 class Proyecto:
-    def __init__(self, id_proyecto=None, nombre="", descripcion="",
-                 fecha_inicio="", fecha_fin=""):
-        nombre = nombre.strip()
-        if not nombre:
-            raise ValueError("El nombre del proyecto es obligatorio.")
-        if fecha_inicio and fecha_fin and fecha_fin < fecha_inicio:
-            raise ValueError("La fecha final no puede ser anterior a la inicial.")
+    """Representa un proyecto dentro del sistema EcoTech."""
+
+    def __init__(
+        self,
+        id_proyecto: int = None,
+        nombre: str = "",
+        descripcion: str = "",
+        fecha_inicio: str = "",
+        fecha_fin: str = None,
+        estado: str = "En progreso",
+        **kwargs,
+    ):
         self.id_proyecto = id_proyecto
         self.nombre = nombre
-        self.descripcion = descripcion.strip()
-        self.fecha_inicio = fecha_inicio.strip()
-        self.fecha_fin = fecha_fin.strip()
-        self._empleados = []
+        self.descripcion = descripcion
+        self.fecha_inicio = fecha_inicio
+        self.fecha_fin = fecha_fin
+        self.estado = estado
 
-    def gestionarProyecto(self, opcion: str) -> bool:
-        return opcion.strip().lower() in {"crear", "actualizar", "eliminar"}
+    def __getitem__(self, item):
+        """Permite acceso tipo diccionario (ej. proyecto['id_proyecto'])."""
+        return getattr(self, item, None)
 
-    def asignarEmpleado(self, empleado) -> bool:
-        if empleado in self._empleados:
-            return False
-        self._empleados.append(empleado)
-        return True
+    def __str__(self) -> str:
+        f_fin = self.fecha_fin if self.fecha_fin else "En desarrollo"
+        return (
+            f"\nID Proyecto  : {self.id_proyecto}\n"
+            f"Nombre       : {self.nombre}\n"
+            f"Descripción  : {self.descripcion}\n"
+            f"Fecha Inicio : {self.fecha_inicio}\n"
+            f"Fecha Fin    : {f_fin}\n"
+            f"Estado       : {self.estado}"
+        )
 
-    def desasignarEmpleado(self, empleado) -> bool:
-        if empleado not in self._empleados:
-            return False
-        self._empleados.remove(empleado)
-        return True
-
-    @property
-    def empleados(self):
-        return tuple(self._empleados)
+    def __repr__(self) -> str:
+        return self.__str__()

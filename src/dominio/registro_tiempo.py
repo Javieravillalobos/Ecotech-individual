@@ -1,26 +1,54 @@
-from datetime import date
+"""Entidad de dominio RegistroTiempo."""
 
 
 class RegistroTiempo:
-    def __init__(self, id_registro=None, empleado_id=None, proyecto_id=None,
-                 fecha=None, horas_trabajadas=0.0, descripcion_tarea=""):
-        if not empleado_id or not proyecto_id:
-            raise ValueError("Debe indicar un empleado y un proyecto.")
-        horas = float(horas_trabajadas)
-        if not 0 < horas <= 24:
-            raise ValueError("Las horas deben ser mayores que 0 y hasta 24.")
-        descripcion_tarea = descripcion_tarea.strip()
-        if not descripcion_tarea:
-            raise ValueError("La descripción de la tarea es obligatoria.")
+    """Representa un registro de horas trabajadas por un empleado en un proyecto."""
+
+    def __init__(
+        self,
+        id_registro: int = None,
+        empleado_id: int = None,
+        proyecto_id: int = None,
+        fecha: str = "",
+        horas_trabajadas: float = 0.0,
+        descripcion_tarea: str = "",
+        empleado: str = None,
+        proyecto: str = None,
+    ):
         self.id_registro = id_registro
-        self.empleado_id = int(empleado_id)
-        self.proyecto_id = int(proyecto_id)
-        self.fecha = (fecha or date.today().isoformat()).strip()
-        self.horas_trabajadas = horas
+        self.empleado_id = empleado_id
+        self.proyecto_id = proyecto_id
+        self.fecha = fecha
+        self.horas_trabajadas = horas_trabajadas
         self.descripcion_tarea = descripcion_tarea
+        self._empleado = empleado
+        self._proyecto = proyecto
 
-    def registrarHoras(self) -> bool:
-        return 0 < self.horas_trabajadas <= 24
+    @property
+    def empleado(self) -> str:
+        """Propiedad de compatibilidad para vistas que solicitan .empleado."""
+        if self._empleado:
+            return self._empleado
+        return f"Empleado #{self.empleado_id}" if self.empleado_id else "N/A"
 
-    def validarHoras(self) -> bool:
-        return self.registrarHoras() and bool(self.descripcion_tarea)
+    @property
+    def proyecto(self) -> str:
+        """Propiedad de compatibilidad para vistas que solicitan .proyecto."""
+        if self._proyecto:
+            return self._proyecto
+        return f"Proyecto #{self.proyecto_id}" if self.proyecto_id else "N/A"
+
+    def __getitem__(self, item):
+        """Permite acceso por clave para compatibilidad con diccionarios."""
+        return getattr(self, item, None)
+
+    def __str__(self) -> str:
+        """Representación legible en texto para la consola."""
+        return (
+            f"ID: {self.id_registro} | Fecha: {self.fecha} | "
+            f"Proyecto: {self.proyecto} | Horas: {self.horas_trabajadas}h | "
+            f"Tarea: {self.descripcion_tarea}"
+        )
+
+    def __repr__(self) -> str:
+        return self.__str__()
