@@ -129,24 +129,24 @@ def menu_principal():
     crear_tablas()
     cargar_semilla()
 
-    try:
-        print(f"\nBase de datos conectada exitosamente ({motor_actual().upper()})")
-    except Exception as exc:
-        print(f"No se pudo inicializar la base de datos: {exc}")
-        if motor_actual() == "mysql":
-            print("Revisa que MySQL/WampServer esté iniciado y que las credenciales de .env sean correctas.")
-        return
+    # try:
+    #     print(f"\nBase de datos conectada exitosamente ({motor_actual().upper()})")
+    # except Exception as exc:
+    #     print(f"No se pudo inicializar la base de datos: {exc}")
+    #     if motor_actual() == "mysql":
+    #         print("Revisa que MySQL/WampServer esté iniciado y que las credenciales de .env sean correctas.")
+    #     return
 
-    # 2. Bucle de autenticación
-    while True:
-        sesion = solicitar_login()
-        if sesion is None:
-            reintentar = input("\n¿Desea reintentar el ingreso? (S/N): ").strip().upper()
-            if reintentar != "S":
-                print("\n👋 ¡Hasta luego!")
-                sys.exit(0)
-            continue
+    # # 2. Bucle de autenticación
+    # while True:
+    #     sesion = solicitar_login()
+    #     if sesion is None:
+    #         reintentar = input("\n¿Desea reintentar el ingreso? (S/N): ").strip().upper()
+    #         if reintentar != "S":
+    #             print("\n👋 ¡Hasta luego!")
+    #             sys.exit(0)
+    #         continue
 
-        continuar = menu_privado(sesion)
-        if not continuar:
-            sys.exit(0)
+    #     continuar = menu_privado(sesion)
+    #     if not continuar:
+    #         sys.exit(0)
