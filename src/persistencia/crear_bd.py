@@ -64,7 +64,7 @@ def crear_tablas():
                 proyecto_id INTEGER NOT NULL,
                 horas_trabajadas REAL NOT NULL,
                 fecha TEXT NOT NULL,
-                descripcion TEXT,
+                descripcion_tarea TEXT,
                 FOREIGN KEY (empleado_id) REFERENCES empleado(id_empleado) ON DELETE CASCADE,
                 FOREIGN KEY (proyecto_id) REFERENCES proyecto(id_proyecto) ON DELETE CASCADE
             );
@@ -130,7 +130,7 @@ def crear_tablas():
                 proyecto_id INT NOT NULL,
                 horas_trabajadas DECIMAL(5, 2) NOT NULL,
                 fecha DATE NOT NULL,
-                descripcion TEXT,
+                descripcion_tarea TEXT,
                 FOREIGN KEY (empleado_id) REFERENCES empleado(id_empleado) ON DELETE CASCADE,
                 FOREIGN KEY (proyecto_id) REFERENCES proyecto(id_proyecto) ON DELETE CASCADE
             );
